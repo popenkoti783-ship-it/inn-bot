@@ -1,84 +1,53 @@
 import telebot
-import requests
+from openai import OpenAI
 
 TOKEN = "8218056063:AAEq8B0f4zTM10nlr5NBI4bUT9ljp46zl0Y"
+OPENAI_API_KEY = "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"
 
 bot = telebot.TeleBot(TOKEN)
 
+client = OpenAI(
+    api_key=OPENAI_API_KEY
+)
 
 @bot.message_handler(commands=['start'])
 def start(message):
     bot.send_message(
         message.chat.id,
-        "Бот работает 🚀\n\nОтправь ИНН компании."
+        "🤖 CRM AI Assistant запущен.\n\nНапиши любой вопрос."
     )
 
+@bot.message_handler(func=lambda message: True)
+def chat(message):
 
-def get_company_info(inn):
-    url = f"https://bo.nalog.ru/search-proc.json?query={inn}"
-
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
+    user_text = message.text
 
     try:
-        response = requests.get(
-            url,
-            headers=headers,
-            timeout=10
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Ты CRM AI Assistant. Отвечай кратко и полезно."
+                },
+                {
+                    "role": "user",
+                    "content": user_text
+                }
+            ]
         )
 
-        data = response.json()
+        answer = response.choices[0].message.content
 
-        if "suggestions" not in data:
-            return "Компания не найдена."
-
-        if len(data["suggestions"]) == 0:
-            return "Компания не найдена."
-
-        company = data["suggestions"][0]
-
-        name = company.get("name", "Нет названия")
-        ogrn = company.get("ogrn", "Нет ОГРН")
-        address = company.get("address", "Нет адреса")
-
-        return f"""
-🏢 Компания:
-{name}
-
-🆔 ИНН:
-{inn}
-
-📄 ОГРН:
-{ogrn}
-
-📍 Адрес:
-{address}
-"""
-
-    except Exception as e:
-        return f"Ошибка: {e}"
-
-
-@bot.message_handler(func=lambda m: True)
-def handle_inn(message):
-    inn = message.text.strip()
-
-    if not inn.isdigit():
         bot.send_message(
             message.chat.id,
-            "ИНН должен содержать только цифры."
+            answer
         )
-        return
 
-    result = get_company_info(inn)
-
-    bot.send_message(
-        message.chat.id,
-        result
-    )
-
-
-print("Бот запущен...")
+    except Exception as e:
+        bot.send_message(
+            message.chat.id,
+            f"Ошибка: {e}"
+        )
 
 bot.infinity_polling()

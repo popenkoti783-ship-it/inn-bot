@@ -1,7 +1,7 @@
 import telebot
 import requests
 
-TOKEN = "8218056063:AAEq8B0f4zTM10nlr5NBI4bUT9ljp46zl0Y"
+TOKEN = "ВСТАВЬ_СЮДА_ТОКЕН_ОТ_BOTFATHER"
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -15,24 +15,32 @@ def start(message):
 
 
 def get_company_info(inn):
-    url = f"https://egrul.itsoft.ru/{inn}.json"
+    url = f"https://bo.nalog.ru/search-proc.json?query={inn}"
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
 
     try:
-        response = requests.get(url, timeout=10)
-
-        if response.status_code != 200:
-            return "Компания не найдена."
+        response = requests.get(
+            url,
+            headers=headers,
+            timeout=10
+        )
 
         data = response.json()
 
-        if "СвЮЛ" not in data:
-            return "Информация не найдена."
+        if "suggestions" not in data:
+            return "Компания не найдена."
 
-        company = data["СвЮЛ"]
+        if len(data["suggestions"]) == 0:
+            return "Компания не найдена."
 
-        name = company.get("СвНаимЮЛ", {}).get("НаимЮЛПолн", "Нет названия")
+        company = data["suggestions"][0]
 
-        ogrn = company.get("ОГРН", "Нет ОГРН")
+        name = company.get("name", "Нет названия")
+        ogrn = company.get("ogrn", "Нет ОГРН")
+        address = company.get("address", "Нет адреса")
 
         return f"""
 🏢 Компания:
@@ -43,6 +51,9 @@ def get_company_info(inn):
 
 📄 ОГРН:
 {ogrn}
+
+📍 Адрес:
+{address}
 """
 
     except Exception as e:
@@ -67,5 +78,7 @@ def handle_inn(message):
         result
     )
 
+
+print("Бот запущен...")
 
 bot.infinity_polling()
